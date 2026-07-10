@@ -736,8 +736,9 @@ func loadPersistedAssignments(homeDir string, selection *model.Selection) {
 		selection.CodexModelAssignments = m
 	}
 	if len(selection.CodexCarrilModelAssignments) == 0 && len(s.CodexCarrilModelAssignments) > 0 {
-		m := make(map[string]string, len(s.CodexCarrilModelAssignments))
-		for k, v := range s.CodexCarrilModelAssignments {
+		persisted := migrateLegacyCodexCarrilModels(s.CodexCarrilModelAssignments)
+		m := make(map[string]string, len(persisted))
+		for k, v := range persisted {
 			m[k] = v
 		}
 		selection.CodexCarrilModelAssignments = m
@@ -756,6 +757,23 @@ func loadPersistedAssignments(homeDir string, selection *model.Selection) {
 		}
 		selection.ModelAssignments = m
 	}
+}
+
+func migrateLegacyCodexCarrilModels(assignments map[string]string) map[string]string {
+	if len(assignments) != 3 {
+		return assignments
+	}
+	legacy := map[string]string{
+		"sdd-strong": "gpt-5.5",
+		"sdd-mid":    "gpt-5.5",
+		"sdd-cheap":  "gpt-5.4-mini",
+	}
+	for carril, want := range legacy {
+		if assignments[carril] != want {
+			return assignments
+		}
+	}
+	return model.DefaultCarrilModels()
 }
 
 // persistAssignments writes the model assignments from selection back to

@@ -1470,9 +1470,10 @@ func TestApplyOverrides_CodexCarrilModelAssignments(t *testing.T) {
 	}
 }
 
-// TestLoadPersistedAssignments_CodexCarrilModels verifies that state with
-// codexCarrilModelAssignments populates selection.CodexCarrilModelAssignments.
-func TestLoadPersistedAssignments_CodexCarrilModels(t *testing.T) {
+// TestLoadPersistedAssignments_CodexCarrilModelsMigratesLegacyDefaults verifies
+// that the historical default carril set is treated as a default, not a custom
+// user choice, so sync picks up the current GPT-5.6 defaults.
+func TestLoadPersistedAssignments_CodexCarrilModelsMigratesLegacyDefaults(t *testing.T) {
 	home := t.TempDir()
 	if err := state.Write(home, state.InstallState{
 		InstalledAgents: []string{"codex"},
@@ -1488,8 +1489,32 @@ func TestLoadPersistedAssignments_CodexCarrilModels(t *testing.T) {
 	sel := model.Selection{}
 	loadPersistedAssignments(home, &sel)
 
-	if sel.CodexCarrilModelAssignments["sdd-cheap"] != "gpt-5.4-mini" {
-		t.Errorf("CodexCarrilModelAssignments[sdd-cheap] = %q, want gpt-5.4-mini", sel.CodexCarrilModelAssignments["sdd-cheap"])
+	if sel.CodexCarrilModelAssignments["sdd-cheap"] != "gpt-5.6-luna" {
+		t.Errorf("CodexCarrilModelAssignments[sdd-cheap] = %q, want gpt-5.6-luna", sel.CodexCarrilModelAssignments["sdd-cheap"])
+	}
+	if sel.CodexCarrilModelAssignments["sdd-strong"] != "gpt-5.6-sol" {
+		t.Errorf("CodexCarrilModelAssignments[sdd-strong] = %q, want gpt-5.6-sol", sel.CodexCarrilModelAssignments["sdd-strong"])
+	}
+}
+
+func TestLoadPersistedAssignments_CodexCarrilModelsPreservesCustom(t *testing.T) {
+	home := t.TempDir()
+	if err := state.Write(home, state.InstallState{
+		InstalledAgents: []string{"codex"},
+		CodexCarrilModelAssignments: map[string]string{
+			"sdd-strong": "gpt-5.5",
+			"sdd-mid":    "gpt-5.4",
+			"sdd-cheap":  "gpt-5.4-mini",
+		},
+	}); err != nil {
+		t.Fatalf("state.Write: %v", err)
+	}
+
+	sel := model.Selection{}
+	loadPersistedAssignments(home, &sel)
+
+	if sel.CodexCarrilModelAssignments["sdd-mid"] != "gpt-5.4" {
+		t.Errorf("CodexCarrilModelAssignments[sdd-mid] = %q, want gpt-5.4", sel.CodexCarrilModelAssignments["sdd-mid"])
 	}
 	if sel.CodexCarrilModelAssignments["sdd-strong"] != "gpt-5.5" {
 		t.Errorf("CodexCarrilModelAssignments[sdd-strong] = %q, want gpt-5.5", sel.CodexCarrilModelAssignments["sdd-strong"])
